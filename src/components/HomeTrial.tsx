@@ -1,256 +1,237 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import Countdown from 'react-countdown';
-import { Clock, Check, X, ArrowRight, ArrowLeft, CreditCard, Plus } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
+import { Link } from 'react-router-dom';
 
-const MOCK_TRIAL_ITEMS = [
-  {
-    id: '1',
-    name: 'Classic White T-Shirt',
-    brand: 'Essential Wear',
-    price: 599,
-    size: 'M',
-    color: 'White',
-    image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80'
-  },
-  {
-    id: '2',
-    name: 'Denim Jacket',
-    brand: 'Urban Style',
-    price: 2499,
-    size: 'L',
-    color: 'Blue',
-    image: 'https://images.unsplash.com/photo-1551537482-f2075a1d41f2?auto=format&fit=crop&q=80'
-  }
-];
+interface TrialItem {
+  id: string;
+  name: string;
+  brand: string;
+  price: number;
+  image: string;
+  sizes: string[];
+  colors: string[];
+  available: boolean;
+}
 
 export function HomeTrial() {
-  const [step, setStep] = useState(1);
+  const { user } = useAuth();
+  const [trialItems, setTrialItems] = useState<TrialItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  const trialEndTime = Date.now() + 2 * 60 * 60 * 1000; // 2 hours from now
+  const [selectedSizes, setSelectedSizes] = useState<Record<string, string>>({});
+  const [selectedColors, setSelectedColors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleItemSelection = (itemId: string) => {
-    setSelectedItems(current =>
-      current.includes(itemId)
-        ? current.filter(id => id !== itemId)
-        : [...current, itemId]
+  useEffect(() => {
+    const fetchTrialItems = async () => {
+      try {
+        const response = await api.get('/products/trial-eligible');
+        setTrialItems(response.data);
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to load trial-eligible items');
+        setLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchTrialItems();
+    }
+  }, [user]);
+
+  const handleItemSelect = (itemId: string) => {
+    if (selectedItems.length >= 3 && !selectedItems.includes(itemId)) {
+      alert('You can select up to 3 items for home trial');
+      return;
+    }
+
+    setSelectedItems(prev => 
+      prev.includes(itemId)
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
     );
   };
 
-  const calculateTotal = () => {
-    const items = MOCK_TRIAL_ITEMS.filter(item => selectedItems.includes(item.id));
-    const subtotal = items.reduce((sum, item) => sum + item.price, 0);
-    const gst = subtotal * 0.18;
-    const deliveryFee = 0;
-    const handlingFee = 49;
-    return {
-      subtotal,
-      gst,
-      deliveryFee,
-      handlingFee,
-      total: subtotal + gst + deliveryFee + handlingFee
-    };
+  const handleSizeSelect = (itemId: string, size: string) => {
+    setSelectedSizes(prev => ({
+      ...prev,
+      [itemId]: size
+    }));
   };
 
+  const handleColorSelect = (itemId: string, color: string) => {
+    setSelectedColors(prev => ({
+      ...prev,
+      [itemId]: color
+    }));
+  };
+
+  const handleSubmit = async () => {
+    if (selectedItems.length === 0) {
+      alert('Please select at least one item for trial');
+      return;
+    }
+
+    const itemsWithoutSize = selectedItems.filter(id => !selectedSizes[id]);
+    if (itemsWithoutSize.length > 0) {
+      alert('Please select size for all items');
+      return;
+    }
+
+    const itemsWithoutColor = selectedItems.filter(id => !selectedColors[id]);
+    if (itemsWithoutColor.length > 0) {
+      alert('Please select color for all items');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const trialData = selectedItems.map(itemId => ({
+        itemId,
+        size: selectedSizes[itemId],
+        color: selectedColors[itemId]
+      }));
+
+      await api.post('/orders/trial', { items: trialData });
+      alert('Home trial request submitted successfully');
+      // Reset selections
+      setSelectedItems([]);
+      setSelectedSizes({});
+      setSelectedColors({});
+    } catch (err) {
+      alert('Failed to submit trial request. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="text-center py-12">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+          Please login to request home trials
+        </h3>
+        <Link to="/auth" className="mt-4 inline-block text-sky-600 hover:text-sky-700">
+          Login now
+        </Link>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return <div className="text-center py-12">Loading trial-eligible items...</div>;
+  }
+
+  if (error) {
+    return <div className="text-center py-12 text-red-500">{error}</div>;
+  }
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Trial Timer */}
-      <div className="bg-purple-50 p-4 rounded-lg mb-8 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Clock className="w-5 h-5 text-purple-600" />
-          <span className="font-medium">Trial Period Remaining:</span>
-        </div>
-        <Countdown
-          date={trialEndTime}
-          renderer={({ hours, minutes, seconds }) => (
-            <span className="text-lg font-bold text-purple-600">
-              {hours}:{minutes}:{seconds}
-            </span>
-          )}
-        />
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Home Trial</h1>
+        <p className="mt-2 text-gray-600 dark:text-gray-400">
+          Try before you buy! Select up to 3 items to try at home.
+        </p>
       </div>
 
-      {/* Steps */}
-      <div className="mb-8">
-        <div className="flex justify-between items-center relative">
-          <div className="absolute left-0 top-1/2 w-full h-1 bg-gray-200 -z-10" />
-          {[1, 2, 3].map((stepNumber) => (
-            <div
-              key={stepNumber}
-              className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                step >= stepNumber ? 'bg-purple-600 text-white' : 'bg-gray-200'
-              }`}
-            >
-              {stepNumber}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {step === 1 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="space-y-6"
-        >
-          <h2 className="text-2xl font-bold">Select Items to Keep</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {MOCK_TRIAL_ITEMS.map((item) => (
-              <div
-                key={item.id}
-                className={`bg-white p-4 rounded-lg shadow-sm flex space-x-4 ${
-                  selectedItems.includes(item.id) ? 'ring-2 ring-purple-600' : ''
+      <div className="grid grid-cols-1 gap-y-10 sm:grid-cols-2 gap-x-6 lg:grid-cols-3 xl:gap-x-8">
+        {trialItems.map((item, index) => (
+          <motion.div
+            key={item.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            className="group relative"
+          >
+            <div className="aspect-w-4 aspect-h-5 rounded-lg overflow-hidden bg-gray-100">
+              <img
+                src={item.image}
+                alt={item.name}
+                className="object-center object-cover group-hover:opacity-75"
+              />
+              <button
+                onClick={() => handleItemSelect(item.id)}
+                className={`absolute top-4 right-4 p-2 rounded-full ${
+                  selectedItems.includes(item.id)
+                    ? 'bg-sky-600 text-white'
+                    : 'bg-white text-gray-900'
                 }`}
               >
-                <img
-                  src={item.image}
-                  alt={item.name}
-                  className="w-32 h-32 object-cover rounded"
-                />
-                <div className="flex-1">
-                  <h3 className="font-medium">{item.name}</h3>
-                  <p className="text-sm text-gray-600">{item.brand}</p>
-                  <p className="text-sm">Size: {item.size} | Color: {item.color}</p>
-                  <p className="font-bold mt-2">₹{item.price}</p>
-                  <button
-                    onClick={() => handleItemSelection(item.id)}
-                    className={`mt-4 px-4 py-2 rounded-lg flex items-center space-x-2 ${
-                      selectedItems.includes(item.id)
-                        ? 'bg-purple-600 text-white'
-                        : 'border border-purple-600 text-purple-600'
-                    }`}
+                {selectedItems.includes(item.id) ? 'Selected' : 'Select'}
+              </button>
+            </div>
+
+            <div className="mt-4 flex justify-between">
+              <div>
+                <h3 className="text-sm text-gray-700 dark:text-gray-200">
+                  {item.name}
+                </h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  {item.brand}
+                </p>
+              </div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                ₹{item.price}
+              </p>
+            </div>
+
+            {selectedItems.includes(item.id) && (
+              <div className="mt-4 space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                    Size
+                  </label>
+                  <select
+                    value={selectedSizes[item.id] || ''}
+                    onChange={(e) => handleSizeSelect(item.id, e.target.value)}
+                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md"
                   >
-                    {selectedItems.includes(item.id) ? (
-                      <>
-                        <Check className="w-4 h-4" />
-                        <span>Selected to Keep</span>
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="w-4 h-4" />
-                        <span>Keep This Item</span>
-                      </>
-                    )}
-                  </button>
+                    <option value="">Select size</option>
+                    {item.sizes.map((size) => (
+                      <option key={size} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                    Color
+                  </label>
+                  <select
+                    value={selectedColors[item.id] || ''}
+                    onChange={(e) => handleColorSelect(item.id, e.target.value)}
+                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm rounded-md"
+                  >
+                    <option value="">Select color</option>
+                    {item.colors.map((color) => (
+                      <option key={color} value={color}>
+                        {color}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
-            ))}
-          </div>
-          <div className="flex justify-end">
-            <button
-              onClick={() => setStep(2)}
-              className="bg-purple-600 text-white px-6 py-2 rounded-lg flex items-center space-x-2"
-            >
-              <span>Next</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </motion.div>
-      )}
+            )}
+          </motion.div>
+        ))}
+      </div>
 
-      {step === 2 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="space-y-6"
-        >
-          <h2 className="text-2xl font-bold">Review Selection</h2>
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h3 className="font-medium mb-4">Items to Keep</h3>
-            <div className="space-y-4">
-              {MOCK_TRIAL_ITEMS.filter(item => selectedItems.includes(item.id)).map(item => (
-                <div key={item.id} className="flex justify-between items-center">
-                  <div className="flex items-center space-x-4">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-16 h-16 object-cover rounded"
-                    />
-                    <div>
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-sm text-gray-600">
-                        Size: {item.size} | Color: {item.color}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="font-bold">₹{item.price}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 pt-6 border-t">
-              <h3 className="font-medium mb-4">Items to Return</h3>
-              <div className="space-y-4">
-                {MOCK_TRIAL_ITEMS.filter(item => !selectedItems.includes(item.id)).map(item => (
-                  <div key={item.id} className="flex justify-between items-center opacity-50">
-                    <div className="flex items-center space-x-4">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-16 h-16 object-cover rounded"
-                      />
-                      <div>
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-sm text-gray-600">
-                          Size: {item.size} | Color: {item.color}
-                        </p>
-                      </div>
-                    </div>
-                    <X className="w-5 h-5 text-gray-400" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-between">
-            <button
-              onClick={() => setStep(1)}
-              className="text-purple-600 px-6 py-2 rounded-lg flex items-center space-x-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back</span>
-            </button>
-            <button
-              onClick={() => setStep(3)}
-              className="bg-purple-600 text-white px-6 py-2 rounded-lg flex items-center space-x-2"
-            >
-              <span>Proceed to Payment</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </motion.div>
-      )}
-
-      {step === 3 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="space-y-6"
-        >
-          <h2 className="text-2xl font-bold">Payment</h2>
-          <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h3 className="font-medium mb-4">Bill Summary</h3>
-            <div className="space-y-2">
-              {Object.entries(calculateTotal()).map(([key, value]) => (
-                <div key={key} className="flex justify-between items-center">
-                  <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                  <span className="font-medium">₹{value.toFixed(2)}</span>
-                </div>
-              ))}
-            </div>
-
-            <button
-              className="w-full mt-6 bg-purple-600 text-white py-3 rounded-lg flex items-center justify-center space-x-2"
-              onClick={() => {
-                // Integrate Razorpay here
-                alert('Redirecting to Razorpay...');
-              }}
-            >
-              <CreditCard className="w-5 h-5" />
-              <span>Pay Now</span>
-            </button>
-          </div>
-        </motion.div>
+      {selectedItems.length > 0 && (
+        <div className="mt-8 flex justify-end">
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="bg-sky-600 text-white px-6 py-2 rounded-md hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:opacity-50"
+          >
+            {submitting ? 'Submitting...' : `Schedule Trial (${selectedItems.length}/3 items)`}
+          </button>
+        </div>
       )}
     </div>
   );

@@ -25,15 +25,15 @@ export function TermsAndConditions() {
 
         <div className="prose prose-purple max-w-none">
           <p className="text-gray-600 mb-6">
-            Welcome to TryNStyle! By using our application, you agree to adhere to and be bound by 
+            Welcome to VirtuQuick.ai! By using our application, you agree to adhere to and be bound by 
             the following terms and conditions. Please read them carefully.
           </p>
 
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">1. Introduction</h2>
             <p className="text-gray-700">
-              These terms and conditions outline the rules for your use of TryNStyle, a fashion 
-              marketplace platform operated by TryNStyle Technologies Private Limited, based in 
+              These terms and conditions outline the rules for your use of VirtuQuick.ai, a fashion 
+              marketplace platform operated by VirtuQuick Technologies Private Limited, based in 
               Bengaluru, India. By accessing our application, you acknowledge and accept these 
               terms in their entirety.
             </p>
@@ -89,7 +89,7 @@ export function TermsAndConditions() {
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">7. Limitation of Liability</h2>
             <p className="text-gray-700">
-              To the maximum extent allowed by law, TryNStyle will not be liable for any indirect, 
+              To the maximum extent allowed by law, VirtuQuick.ai will not be liable for any indirect, 
               incidental, special, or consequential damages, nor for any loss of profits or 
               revenues, whether incurred directly or indirectly.
             </p>
@@ -98,7 +98,7 @@ export function TermsAndConditions() {
           <section className="mb-8">
             <h2 className="text-xl font-semibold mb-4">8. Indemnification</h2>
             <p className="text-gray-700">
-              You agree to indemnify, defend, and hold harmless TryNStyle, along with its 
+              You agree to indemnify, defend, and hold harmless VirtuQuick.ai, along with its 
               directors, officers, employees, consultants, agents, and affiliates, from any 
               claims, liabilities, damages, or costs arising from your use of the app.
             </p>
@@ -125,7 +125,7 @@ export function TermsAndConditions() {
             <h2 className="text-xl font-semibold mb-4">11. Contact Information</h2>
             <p className="text-gray-700">
               If you have any inquiries about these terms and conditions, please reach out to us 
-              at care@trynstyle.com.
+              at care@virtuquick.ai.
             </p>
           </section>
         </div>
