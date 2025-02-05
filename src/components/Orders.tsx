@@ -2,85 +2,35 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Clock, MapPin, HelpCircle, ChevronRight, Package } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useAuth } from '../context/AuthContext';
-import { api } from '../services/api';
 
-interface Order {
-  id: string;
-  date: string;
-  status: string;
-  total: number;
-  items: Array<{
-    id: string;
-    name: string;
-    quantity: number;
-    price: number;
-    image: string;
-  }>;
-}
-
-const Orders = () => {
-  const { user } = useAuth();
-  const [orders, setOrders] = React.useState<Order[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState('');
-
-  React.useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        const response = await api.get('/orders');
-        setOrders(response.data);
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to load orders');
-        setLoading(false);
+const MOCK_ORDERS = [
+  {
+    id: 'ORD123456',
+    status: 'in_transit',
+    items: [
+      {
+        id: '1',
+        name: 'Classic White T-Shirt',
+        price: 599,
+        color: 'White',
+        size: 'M',
+        image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80'
       }
-    };
-
-    if (user) {
-      fetchOrders();
-    }
-  }, [user]);
-
-  if (!user) {
-    return (
-      <div className="text-center py-12">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Please login to view your orders</h3>
-        <Link to="/auth" className="mt-4 inline-block text-sky-600 hover:text-sky-700">
-          Login now
-        </Link>
-      </div>
-    );
+    ],
+    address: '123 Main St, Bangalore, Karnataka',
+    orderTime: '2024-03-10T10:30:00Z',
+    estimatedDelivery: '2024-03-10T14:30:00Z',
+    total: 648
   }
+];
 
-  if (loading) {
-    return <div className="text-center py-12">Loading orders...</div>;
-  }
-
-  if (error) {
-    return <div className="text-center py-12 text-red-500">{error}</div>;
-  }
-
-  if (orders.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">No orders yet</h3>
-        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-          Start shopping to see your orders here.
-        </p>
-        <Link to="/" className="mt-4 inline-block text-sky-600 hover:text-sky-700">
-          Browse products
-        </Link>
-      </div>
-    );
-  }
-
+export function Orders() {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-8">My Orders</h1>
 
       <div className="space-y-6">
-        {orders.map((order, index) => (
+        {MOCK_ORDERS.map((order, index) => (
           <motion.div
             key={order.id}
             initial={{ opacity: 0, y: 20 }}
@@ -96,7 +46,7 @@ const Orders = () => {
               </div>
               <div className="flex items-center text-sm text-gray-600">
                 <Clock className="w-4 h-4 mr-1" />
-                <span>Ordered on {new Date(order.date).toLocaleDateString()}</span>
+                <span>Ordered on {new Date(order.orderTime).toLocaleDateString()}</span>
               </div>
             </div>
 
@@ -108,7 +58,7 @@ const Orders = () => {
                   <span className="font-medium">Delivery Status</span>
                 </div>
                 <span className="text-sm text-purple-600">
-                  Estimated delivery by {new Date(order.date).toLocaleTimeString()}
+                  Estimated delivery by {new Date(order.estimatedDelivery).toLocaleTimeString()}
                 </span>
               </div>
 
@@ -142,9 +92,9 @@ const Orders = () => {
                   <div className="flex-1">
                     <h3 className="font-medium">{item.name}</h3>
                     <p className="text-sm text-gray-600">
-                      Qty: {item.quantity} × ₹{item.price}
+                      Size: {item.size} | Color: {item.color}
                     </p>
-                    <p className="text-sm font-medium">₹{item.quantity * item.price}</p>
+                    <p className="text-sm font-medium">₹{item.price}</p>
                   </div>
                 </div>
               ))}
@@ -156,7 +106,7 @@ const Orders = () => {
                 <MapPin className="w-5 h-5 text-gray-400 flex-shrink-0" />
                 <div>
                   <h3 className="font-medium">Delivery Address</h3>
-                  <p className="text-sm text-gray-600">123 Main St, Bangalore, Karnataka</p>
+                  <p className="text-sm text-gray-600">{order.address}</p>
                 </div>
               </div>
             </div>
@@ -180,6 +130,4 @@ const Orders = () => {
       </div>
     </div>
   );
-};
-
-export default Orders;
+}

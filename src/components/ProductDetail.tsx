@@ -1,215 +1,184 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Heart, Camera } from 'lucide-react';
+import { useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { Heart, ShoppingBag } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { ProductReviews } from './ProductReviews';
-import { useAuth } from '../context/AuthContext';
-import { useWishlist } from '../context/WishlistContext';
-import { productService } from '../services/product.service';
-import { Product } from '../types';
+import { useCart } from '../context/CartContext';
+
+const MOCK_PRODUCT = {
+  id: '1',
+  name: 'Classic White T-Shirt',
+  brand: 'Essential Wear',
+  price: 599,
+  originalPrice: 999,
+  description: 'A comfortable and versatile white t-shirt made from 100% cotton.',
+  images: [
+    'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&q=80',
+  ],
+  sizes: ['S', 'M', 'L', 'XL'],
+  colors: ['White', 'Black', 'Gray'],
+};
+
+type ToastProps = {
+  message: string;
+  onClose: () => void; 
+};
+
+function Toast({ message, onClose }: ToastProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-purple-600 text-white px-4 py-2 rounded-lg shadow-lg z-50"
+    >
+      <div className="flex items-center space-x-2">
+        <span>{message}</span>
+        <button onClick={onClose} className="text-white font-bold">
+          ✕
+        </button>
+      </div>
+    </motion.div>
+  );
+}
 
 export function ProductDetail() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
-  const [product, setProduct] = useState<Product | null>(null);
-  const [mainImage, setMainImage] = useState('');
+  const { id } = useParams();
+  const { addItem } = useCart();
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    const fetchProduct = async () => {
-      try {
-        if (!id) return;
-        const data = await productService.getProductById(id);
-        setProduct(data);
-        setMainImage(data.images[0]);
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to load product details');
-        setLoading(false);
-      }
-    };
-    fetchProduct();
-  }, [id]);
-
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
-
-  if (error || !product) {
-    return <div className="min-h-screen flex items-center justify-center text-red-500">{error || 'Product not found'}</div>;
-  }
+  const [mainImage, setMainImage] = useState(MOCK_PRODUCT.images[0]);
+  const [toastMessage, setToastMessage] = useState('');
 
   const handleAddToCart = () => {
-    // Add to cart logic
-    const cartItem = {
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      size: selectedSize,
-      color: selectedColor,
-      quantity: 1,
-    };
-    console.log('Adding to cart:', cartItem);
-  };
-
-  const handleTryOn = () => {
-    if (!mainImage) return;
-    navigate(`/virtual-try-on?image=${encodeURIComponent(mainImage)}`);
-  };
-
-  const handleWishlistToggle = () => {
-    if (!user) {
-      // Show login prompt
+    if (!selectedSize || !selectedColor) {
+      alert('Please select size and color');
       return;
     }
-    if (isInWishlist(product.id)) {
-      removeFromWishlist(product.id);
-    } else {
-      addToWishlist(product);
-    }
+    addItem({
+      id: MOCK_PRODUCT.id,
+      name: MOCK_PRODUCT.name,
+      price: MOCK_PRODUCT.price,
+      quantity: 1,
+    });
+    setToastMessage('Added to Bag');
+    setTimeout(() => setToastMessage(''), 3000); // Automatically close after 3 seconds
+  };
+
+  const handleWishlist = () => {
+    setToastMessage('Saved to Wishlist');
+    setTimeout(() => setToastMessage(''), 3000); // Automatically close after 3 seconds
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Product Images */}
-          <div className="space-y-4">
-            <div className="aspect-w-1 aspect-h-1 bg-gray-200 rounded-lg overflow-hidden">
-              <motion.img
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                src={mainImage}
-                alt={product.name}
-                className="w-full h-full object-center object-cover"
-              />
+    <div className="container mx-auto px-4 py-8">
+      {toastMessage && <Toast message={toastMessage} onClose={() => setToastMessage('')} />}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Product Images */}
+        <div className="space-y-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="aspect-square rounded-lg overflow-hidden"
+          >
+            <img
+              src={mainImage}
+              alt={MOCK_PRODUCT.name}
+              className="w-full h-full object-cover"
+            />
+          </motion.div>
+          <div className="grid grid-cols-4 gap-4">
+            {MOCK_PRODUCT.images.map((image, index) => (
+              <button
+                key={index}
+                onClick={() => setMainImage(image)}
+                className={`aspect-square rounded-lg overflow-hidden border-2 ${
+                  mainImage === image ? 'border-purple-600' : 'border-transparent'
+                }`}
+              >
+                <img
+                  src={image}
+                  alt={`Product view ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Product Info */}
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">{MOCK_PRODUCT.name}</h1>
+            <p className="text-gray-600 mb-4">{MOCK_PRODUCT.brand}</p>
+            <div className="flex items-center space-x-4 mb-4">
+              <span className="text-2xl font-bold">₹{MOCK_PRODUCT.price}</span>
+              <span className="text-gray-500 line-through">₹{MOCK_PRODUCT.originalPrice}</span>
+              <span className="text-green-600">
+                {Math.round(((MOCK_PRODUCT.originalPrice - MOCK_PRODUCT.price) / MOCK_PRODUCT.originalPrice) * 100)}% off
+              </span>
             </div>
-            <div className="grid grid-cols-4 gap-4">
-              {product.images.map((image, index) => (
+          </div>
+
+          {/* Size Selection */}
+          <div>
+            <h3 className="text-lg font-semibold mb-3">Select Size</h3>
+            <div className="flex space-x-3">
+              {MOCK_PRODUCT.sizes.map((size) => (
                 <button
-                  key={index}
-                  onClick={() => setMainImage(image)}
-                  className={`aspect-w-1 aspect-h-1 rounded-lg overflow-hidden ${
-                    mainImage === image ? 'ring-2 ring-sky-500' : ''
+                  key={size}
+                  onClick={() => setSelectedSize(size)}
+                  className={`w-12 h-12 rounded-full border-2 flex items-center justify-center ${
+                    selectedSize === size
+                      ? 'border-purple-600 text-purple-600'
+                      : 'border-gray-300 hover:border-gray-400'
                   }`}
                 >
-                  <img
-                    src={image}
-                    alt={`${product.name} view ${index + 1}`}
-                    className="w-full h-full object-center object-cover"
-                  />
+                  {size}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Product Info */}
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{product.name}</h1>
-              <p className="text-lg text-gray-600 dark:text-gray-300">{product.brand}</p>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">₹{product.price}</p>
-              {product.originalPrice > product.price && (
-                <div className="flex items-center space-x-2">
-                  <span className="text-gray-500 dark:text-gray-400 line-through">₹{product.originalPrice}</span>
-                  <span className="text-green-500">
-                    {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% off
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <p className="text-gray-600 dark:text-gray-300">{product.description}</p>
-            </div>
-
-            {/* Size Selection */}
-            <div>
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white">Size</h3>
-              <div className="grid grid-cols-4 gap-2 mt-2">
-                {product.sizes?.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`px-4 py-2 text-sm font-medium rounded-md ${
-                      selectedSize === size
-                        ? 'bg-sky-600 text-white'
-                        : 'bg-white text-gray-900 border border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    {size}
-                  </button>
-                )) ?? null}
-              </div>
-            </div>
-
-            {/* Color Selection */}
-            <div>
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white">Color</h3>
-              <div className="grid grid-cols-4 gap-2 mt-2">
-                {product && product.colors?.map((color) => (
-                  <button
-                    key={color}
-                    onClick={() => setSelectedColor(color)}
-                    className={`px-4 py-2 text-sm font-medium rounded-md ${
-                      selectedColor === color
-                        ? 'bg-sky-600 text-white'
-                        : 'bg-white text-gray-900 border border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    {color}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex space-x-4">
-              <button
-                onClick={handleAddToCart}
-                disabled={!selectedSize || !selectedColor}
-                className="flex-1 bg-sky-600 text-white px-6 py-3 rounded-md font-medium hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Add to Cart
-              </button>
-
-              <button
-                onClick={handleTryOn}
-                className="bg-purple-600 text-white px-6 py-3 rounded-md font-medium hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 flex items-center"
-              >
-                <Camera className="w-5 h-5 mr-2" />
-                Try On
-              </button>
-
-              <button
-                onClick={handleWishlistToggle}
-                disabled={!user}
-                className={`p-3 rounded-md ${
-                  isInWishlist(product.id) && user
-                    ? 'bg-red-100 text-red-600 hover:bg-red-200'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-                aria-label={!user ? 'Login to use Wishlist' : isInWishlist(product.id) ? 'Remove from Wishlist' : 'Add to Wishlist'}
-              >
-                <Heart
-                  size={24}
-                  className={isInWishlist(product.id) && user ? 'fill-current' : ''}
-                />
-              </button>
+          {/* Color Selection */}
+          <div>
+            <h3 className="text-lg font-semibold mb-3">Select Color</h3>
+            <div className="flex space-x-3">
+              {MOCK_PRODUCT.colors.map((color) => (
+                <button
+                  key={color}
+                  onClick={() => setSelectedColor(color)}
+                  className={`px-4 py-2 rounded-full border-2 ${
+                    selectedColor === color
+                      ? 'border-purple-600 text-purple-600'
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                >
+                  {color}
+                </button>
+              ))}
             </div>
           </div>
-        </div>
 
-        {/* Reviews Section */}
-        <ProductReviews productId={product.id} />
+          {/* Actions */}
+          <div className="flex space-x-4">
+            <button
+              onClick={handleAddToCart}
+              className="flex-1 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center space-x-2"
+            >
+              <ShoppingBag className="w-5 h-5" />
+              <span>Add to Cart</span>
+            </button>
+            <button
+              onClick={handleWishlist}
+              className="p-3 border-2 border-gray-300 rounded-lg hover:border-gray-400"
+            >
+              <Heart className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

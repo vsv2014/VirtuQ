@@ -40,13 +40,6 @@ export function Checkout() {
   const handlingFee = 49;
   const total = subtotal + deliveryFee + handlingFee;
 
-  /**
-   * Handles the checkout form submission.
-   * Checks if the user has completed KYC verification and accepted the terms and conditions.
-   * If either condition is not met, shows an alert to the user.
-   * Otherwise, processes the order and navigates to the confirmation page.
-   * @param {React.FormEvent} e - The form submission event.
-   */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!kycVerified) {
