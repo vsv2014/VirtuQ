@@ -1,43 +1,66 @@
 import { Link } from 'react-router-dom';
 import { Heart } from 'lucide-react';
-
-interface Product {
-  id: string;
-  name: string;
-  brand: string;
-  price: number;
-  originalPrice: number;
-  image: string;
-}
+import { discountPercent, formatINR } from '../lib/format';
+import { useWishlist } from '../context/useWishlist';
+import type { Product } from '../types';
 
 interface ProductCardProps {
   product: Product;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const discount = Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100);
+  const { isSaved, toggle } = useWishlist();
+  const saved = isSaved(product.id);
+  const discount = discountPercent(product.price, product.originalPrice);
 
   return (
-    <div className="group relative bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-      <Link to={`/product/${product.id}`}>
+    <div className="group relative overflow-hidden rounded-lg bg-white shadow-sm transition-shadow hover:shadow-md">
+      {/*
+        The wishlist button used to sit INSIDE the <Link>, which is invalid
+        HTML and made the heart navigate instead of saving. It is now a sibling.
+      */}
+      <Link
+        to={`/product/${product.id}`}
+        className="block"
+        aria-label={`View ${product.name}`}
+      >
         <div className="relative aspect-[3/4]">
           <img
             src={product.image}
             alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
-          <button className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-sm hover:bg-gray-50">
-            <Heart className="w-5 h-5" />
-          </button>
         </div>
-        <div className="p-4">
-          <h3 className="font-medium text-gray-900 mb-1">{product.name}</h3>
-          <p className="text-gray-500 text-sm mb-2">{product.brand}</p>
-          <div className="flex items-center space-x-2">
-            <span className="font-semibold">₹{product.price}</span>
-            <span className="text-gray-500 line-through text-sm">₹{product.originalPrice}</span>
-            <span className="text-green-600 text-sm">{discount}% off</span>
-          </div>
+      </Link>
+
+      <button
+        type="button"
+        onClick={() => toggle(product)}
+        aria-pressed={saved}
+        aria-label={
+          saved
+            ? `Remove ${product.name} from wishlist`
+            : `Save ${product.name} to wishlist`
+        }
+        className="absolute right-4 top-4 rounded-full bg-white p-2 shadow-sm transition-colors hover:bg-gray-50"
+      >
+        <Heart
+          className={`h-5 w-5 ${saved ? 'fill-red-500 text-red-500' : 'text-gray-700'}`}
+        />
+      </button>
+
+      <Link to={`/product/${product.id}`} className="block p-4">
+        <h3 className="mb-1 font-medium text-gray-900">{product.name}</h3>
+        <p className="mb-2 text-sm text-gray-500">{product.brand}</p>
+        <div className="flex items-center space-x-2">
+          <span className="font-semibold">{formatINR(product.price)}</span>
+          <span className="text-sm text-gray-500 line-through">
+            {formatINR(product.originalPrice)}
+          </span>
+          {discount > 0 ? (
+            <span className="text-sm text-green-600">{discount}% off</span>
+          ) : null}
         </div>
       </Link>
     </div>

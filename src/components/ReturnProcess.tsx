@@ -1,132 +1,194 @@
-import React, { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import { Package, Clock, Truck, QrCode } from 'lucide-react';
 
-const MOCK_RETURN_ITEMS = [
-  {
-    id: '1',
-    name: 'Denim Jacket',
-    brand: 'Urban Style',
-    price: 2499,
-    size: 'L',
-    color: 'Blue',
-    image: 'https://images.unsplash.com/photo-1551537482-f2075a1d41f2?auto=format&fit=crop&q=80'
-  }
-];
+import { useOrder } from '../context/useOrder';
+import { useToast } from '../context/useToast';
+import { getErrorMessage } from '../lib/api';
+import { formatINR, formatTime, PICKUP_ETA_MS } from '../lib/format';
+import { Spinner } from './Spinner';
+import type { Order } from '../types';
 
 export function ReturnProcess() {
-  const [returnConfirmed, setReturnConfirmed] = useState(false);
-  const [qrGenerated, setQrGenerated] = useState(false);
-  const pickupTime = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes from now
+  const { orderId } = useParams();
+  const { orders, loading, initiateReturn, pending } = useOrder();
+  const { show } = useToast();
 
-  const handleConfirmReturn = () => {
-    setReturnConfirmed(true);
-    setTimeout(() => setQrGenerated(true), 2000);
+  // Set once when the pickup is confirmed, so it never drifts between renders.
+  const [pickupTime, setPickupTime] = useState<Date | null>(null);
+
+  const order = useMemo<Order | null>(() => {
+    if (orderId) return orders.find((item) => item.id === orderId) ?? null;
+    return (
+      orders.find((item) => item.status === 'return_initiated') ??
+      orders.find((item) => item.status === 'trial_completed') ??
+      null
+    );
+  }, [orders, orderId]);
+
+  const returnItems = useMemo(
+    () => (order?.items ?? []).filter((item) => item.status === 'returned'),
+    [order],
+  );
+
+  const alreadyScheduled = Boolean(order?.returnPickupCode);
+
+  useEffect(() => {
+    if (alreadyScheduled && !pickupTime) {
+      setPickupTime(new Date(Date.now() + PICKUP_ETA_MS));
+    }
+  }, [alreadyScheduled, pickupTime]);
+
+  const handleConfirmReturn = async () => {
+    if (!order) return;
+    try {
+      await initiateReturn(order.id);
+      setPickupTime(new Date(Date.now() + PICKUP_ETA_MS));
+      show('Return pickup scheduled', 'success');
+    } catch (error) {
+      show(getErrorMessage(error), 'error');
+    }
   };
+
+  if (loading && orders.length === 0) {
+    return <Spinner label="Loading return details…" />;
+  }
+
+  if (!order || returnItems.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <Package className="mx-auto mb-4 h-12 w-12 text-gray-300" />
+        <h2 className="mb-4 text-2xl font-bold">Nothing to return</h2>
+        <p className="mb-8 text-gray-600">
+          Finish a home trial and any items you don’t keep will appear here.
+        </p>
+        <Link to="/orders" className="btn btn-primary">
+          View my orders
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-8">Return Process</h1>
+      <h1 className="mb-8 text-2xl font-bold">Return Process</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Return Items */}
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white p-6 rounded-lg shadow-sm"
+            className="rounded-lg bg-white p-6 shadow-sm"
           >
-            <h2 className="text-lg font-semibold mb-4 flex items-center">
-              <Package className="w-5 h-5 mr-2" />
+            <h2 className="mb-4 flex items-center text-lg font-semibold">
+              <Package className="mr-2 h-5 w-5" />
               Items to Return
             </h2>
+
             <div className="space-y-4">
-              {MOCK_RETURN_ITEMS.map((item) => (
-                <div key={item.id} className="flex space-x-4 border-b pb-4">
+              {returnItems.map((item) => (
+                <div key={item.id} className="flex gap-4 border-b pb-4 last:border-b-0">
                   <img
                     src={item.image}
                     alt={item.name}
-                    className="w-24 h-24 object-cover rounded"
+                    loading="lazy"
+                    className="h-24 w-24 rounded object-cover"
                   />
                   <div>
                     <h3 className="font-medium">{item.name}</h3>
                     <p className="text-sm text-gray-600">{item.brand}</p>
-                    <p className="text-sm">Size: {item.size} | Color: {item.color}</p>
-                    <p className="font-bold mt-2">₹{item.price}</p>
+                    <p className="text-sm">
+                      Size: {item.size} | Colour: {item.color}
+                    </p>
+                    <p className="mt-2 font-bold">
+                      {formatINR(item.price * item.quantity)}
+                    </p>
                   </div>
                 </div>
               ))}
             </div>
           </motion.div>
 
-          {/* Return Status */}
-          {returnConfirmed && (
+          {alreadyScheduled ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white p-6 rounded-lg shadow-sm"
+              className="rounded-lg bg-white p-6 shadow-sm"
             >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold flex items-center">
-                  <Truck className="w-5 h-5 mr-2" />
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <h2 className="flex items-center text-lg font-semibold">
+                  <Truck className="mr-2 h-5 w-5" />
                   Pickup Status
                 </h2>
-                <div className="flex items-center text-purple-600">
-                  <Clock className="w-4 h-4 mr-1" />
-                  <span>Estimated pickup by {pickupTime.toLocaleTimeString()}</span>
-                </div>
+                {pickupTime ? (
+                  <div className="flex items-center text-purple-600">
+                    <Clock className="mr-1 h-4 w-4" />
+                    <span>Estimated pickup by {formatTime(pickupTime)}</span>
+                  </div>
+                ) : null}
               </div>
 
-              {qrGenerated && (
-                <div className="mt-6 text-center">
-                  <h3 className="font-medium mb-4 flex items-center justify-center">
-                    <QrCode className="w-5 h-5 mr-2" />
-                    Show this QR code to the delivery partner
-                  </h3>
-                  <div className="inline-block p-4 bg-white rounded-lg shadow-sm">
-                    <QRCodeSVG
-                      value={JSON.stringify(MOCK_RETURN_ITEMS)}
-                      size={200}
-                      level="H"
-                    />
-                  </div>
+              <div className="mt-6 text-center">
+                <h3 className="mb-4 flex items-center justify-center font-medium">
+                  <QrCode className="mr-2 h-5 w-5" />
+                  Show this QR code to the delivery partner
+                </h3>
+                <div className="inline-block rounded-lg bg-white p-4 shadow-sm">
+                  {/* Encodes the one-time pickup code, not the whole item list. */}
+                  <QRCodeSVG
+                    value={order.returnPickupCode ?? ''}
+                    size={200}
+                    level="H"
+                  />
                 </div>
-              )}
+                <p className="mt-4 font-mono text-lg tracking-widest">
+                  {order.returnPickupCode}
+                </p>
+              </div>
             </motion.div>
-          )}
+          ) : null}
         </div>
 
-        {/* Return Actions */}
         <div className="space-y-6">
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-white p-6 rounded-lg shadow-sm"
+            className="rounded-lg bg-white p-6 shadow-sm"
           >
-            <h2 className="text-lg font-semibold mb-4">Return Instructions</h2>
-            <ul className="space-y-3 text-sm">
-              <li className="flex items-start space-x-2">
-                <span className="w-5 h-5 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center flex-shrink-0">1</span>
-                <span>Pack all return items in their original packaging</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <span className="w-5 h-5 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center flex-shrink-0">2</span>
-                <span>Ensure items are in the same condition as received</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <span className="w-5 h-5 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center flex-shrink-0">3</span>
-                <span>Keep the QR code ready for the delivery partner</span>
-              </li>
-            </ul>
+            <h2 className="mb-4 text-lg font-semibold">Return Instructions</h2>
+            <ol className="space-y-3 text-sm">
+              {[
+                'Pack all return items in their original packaging',
+                'Ensure items are in the same condition as received',
+                'Keep the QR code ready for the delivery partner',
+              ].map((text, index) => (
+                <li key={text} className="flex gap-2">
+                  <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-purple-100 text-xs text-purple-600">
+                    {index + 1}
+                  </span>
+                  {text}
+                </li>
+              ))}
+            </ol>
 
-            {!returnConfirmed && (
+            {!alreadyScheduled ? (
               <button
+                type="button"
                 onClick={handleConfirmReturn}
-                className="w-full mt-6 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition-colors"
+                disabled={pending === 'initiateReturn'}
+                className="btn btn-primary mt-6 w-full"
               >
-                Confirm Return Pickup
+                {pending === 'initiateReturn' ? 'Scheduling…' : 'Confirm Return Pickup'}
               </button>
+            ) : (
+              <Link
+                to={`/orders/${order.id}`}
+                className="btn btn-secondary mt-6 w-full"
+              >
+                View order
+              </Link>
             )}
           </motion.div>
         </div>

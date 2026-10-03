@@ -1,3 +1,52 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-white text-gray-900 antialiased;
+  }
+
+  /* Visible focus ring for keyboard users (icon-only buttons rely on it). */
+  :focus-visible {
+    @apply outline-none ring-2 ring-purple-500 ring-offset-2;
+  }
+}
+
+@layer components {
+  /* HomePage hero CTAs referenced these classes but they were never defined,
+     so both buttons rendered completely unstyled. */
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg px-6 py-3 text-sm
+      font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-primary {
+    @apply bg-purple-600 text-white hover:bg-purple-700;
+  }
+
+  .btn-secondary {
+    @apply border border-gray-300 bg-white text-gray-900 hover:bg-gray-50;
+  }
+
+  .btn-ghost {
+    @apply text-purple-600 hover:bg-purple-50;
+  }
+
+  .field-label {
+    @apply mb-1 block text-sm font-medium text-gray-700;
+  }
+
+  .field-input {
+    @apply w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-purple-500
+      focus:ring-purple-500;
+  }
+
+  .field-error {
+    @apply mt-1 text-sm text-red-600;
+  }
+}

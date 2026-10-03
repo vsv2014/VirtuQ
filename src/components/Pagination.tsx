@@ -8,36 +8,43 @@ interface PaginationProps {
 
 export function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
   const getPageNumbers = () => {
-    const pages = [];
+    const pages: number[] = [];
     const showPages = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(showPages / 2));
-    let endPage = Math.min(totalPages, startPage + showPages - 1);
 
-    if (endPage - startPage + 1 < showPages) {
-      startPage = Math.max(1, endPage - showPages + 1);
-    }
+    const start = Math.max(1, currentPage - Math.floor(showPages / 2));
+    // `endPage` is derived once, so it is a const.
+    const endPage = Math.min(totalPages, start + showPages - 1);
+    const first = Math.max(1, endPage - showPages + 1);
 
-    for (let i = startPage; i <= endPage; i++) {
+    for (let i = first; i <= endPage; i += 1) {
       pages.push(i);
     }
     return pages;
   };
 
   return (
-    <div className="flex items-center justify-center space-x-2 mt-8">
+    <nav
+      className="mt-8 flex items-center justify-center gap-2"
+      aria-label="Pagination"
+    >
       <button
+        type="button"
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="p-2 rounded-lg border hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        aria-label="Previous page"
+        className="rounded-lg border p-2 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <ChevronLeft className="w-5 h-5" />
+        <ChevronLeft className="h-5 w-5" />
       </button>
 
       {getPageNumbers().map((page) => (
         <button
           key={page}
+          type="button"
           onClick={() => onPageChange(page)}
-          className={`px-4 py-2 rounded-lg ${
+          aria-label={`Page ${page}`}
+          aria-current={currentPage === page ? 'page' : undefined}
+          className={`rounded-lg px-4 py-2 ${
             currentPage === page
               ? 'bg-purple-600 text-white'
               : 'border hover:bg-gray-50'
@@ -48,16 +55,18 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
       ))}
 
       <button
+        type="button"
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="p-2 rounded-lg border hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        aria-label="Next page"
+        className="rounded-lg border p-2 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <ChevronRight className="w-5 h-5" />
+        <ChevronRight className="h-5 w-5" />
       </button>
 
-      <span className="text-gray-500 ml-4">
+      <span className="ml-4 text-gray-500">
         Page {currentPage} of {totalPages}
       </span>
-    </div>
+    </nav>
   );
 }

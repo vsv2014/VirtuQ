@@ -1,53 +1,94 @@
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
-import { Server } from 'socket.io';
-import orderRoutes from './routes/orders.js';
-import { auth } from './middleware/auth.js';
 
-dotenv.config();
+import { env, allowedOrigins } from './config/env.js';
+import orderRoutes from './routes/orders.js';
+import authRoutes from './routes/auth.js';
+import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
+import { attachRealtime } from './realtime.js';
 
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    methods: ['GET', 'POST']
-  }
+
+// Security headers + a sane global request budget.
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }),
+);
+app.use(express.json({ limit: '100kb' }));
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  }),
+);
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 500,
+    standardHeaders: true,
+    legacyHeaders: false,
+  }),
+);
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString(),
+  });
 });
 
-app.use(cors());
-app.use(express.json());
-
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost/trynstyle')
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
-
-// Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/orders', orderRoutes);
 
-// Socket.IO for real-time updates
-io.on('connection', (socket) => {
-  console.log('Client connected');
+app.use(notFoundHandler);
+app.use(errorHandler);
 
-  socket.on('join-order-room', (orderId) => {
-    socket.join(`order-${orderId}`);
+attachRealtime(httpServer, { allowedOrigins });
+
+let server = null;
+
+async function start() {
+  try {
+    // Await the connection before accepting traffic: previously the server
+    // listened immediately and early requests hung on mongoose buffering.
+    // Fail within 5s rather than hanging on the 30s default.
+    await mongoose.connect(env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+    });
+    console.log('Connected to MongoDB');
+  } catch (error) {
+    console.error('MongoDB connection error:', error.message);
+    if (env.isProduction) {
+      // Fail fast rather than serving an app that cannot persist anything.
+      process.exit(1);
+    }
+    console.warn('Starting without a database connection (development only)');
+  }
+
+  server = httpServer.listen(env.PORT, () => {
+    console.log(`Server running on port ${env.PORT}`);
   });
+}
 
-  socket.on('disconnect', () => {
-    console.log('Client disconnected');
-  });
-});
+async function shutdown(signal) {
+  console.log(`\n${signal} received — shutting down`);
+  if (server) server.close();
+  try {
+    await mongoose.connection.close();
+  } catch {
+    /* ignore */
+  }
+  process.exit(0);
+}
 
-// Broadcast order updates
-export const broadcastOrderUpdate = (orderId, update) => {
-  io.to(`order-${orderId}`).emit('order-update', update);
-};
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
-const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+start();

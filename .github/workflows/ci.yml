@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  quality:
+    name: Lint, types, unit tests, build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  api:
+    name: API smoke test
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+
+    env:
+      MONGODB_URI: mongodb://localhost:27017/trynstyle-ci
+      JWT_SECRET: ci-only-secret-not-used-in-production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start API server
+        run: |
+          node server/index.js > /tmp/api.log 2>&1 &
+          echo $! > /tmp/api.pid
+
+      - name: Wait for the API
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/api/health | grep '"database":"connected"'; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API did not become healthy"; cat /tmp/api.log; exit 1
+
+      - name: Smoke test the API
+        run: node scripts/test-api.mjs
+
+      - name: Stop API server
+        if: always()
+        run: kill "$(cat /tmp/api.pid)" || true
