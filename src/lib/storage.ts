@@ -2,6 +2,7 @@ export const STORAGE_KEYS = {
   cart: 'trynstyle.cart',
   wishlist: 'trynstyle.wishlist',
   location: 'trynstyle.location',
+  measurements: 'trynstyle.measurements',
 } as const;
 
 /** localStorage access that never throws (private mode, quota, SSR). */

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation as useRouterLocation } from 'react-router-dom';
-import { Heart, ShoppingBag, Menu, X } from 'lucide-react';
+import { Heart, ShoppingBag, Menu, X, Boxes } from 'lucide-react';
 
 import { Navigation } from './Navigation';
 import { SearchBar } from './SearchBar';
@@ -59,6 +59,14 @@ export function Header() {
           <Navigation />
 
           <LocationPicker />
+
+          <Link
+            to="/try-on"
+            className="hidden items-center gap-1.5 rounded-full bg-purple-50 px-3 py-1.5 text-sm font-medium text-purple-700 hover:bg-purple-100 lg:flex"
+          >
+            <Boxes className="h-4 w-4" />
+            Virtual Try-On
+          </Link>
 
           <SearchBar />
 

@@ -1,3 +1,4 @@
+import { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { HomePage } from '../components/HomePage';
@@ -15,6 +16,12 @@ import { Profile } from '../components/Profile';
 import { AddressBook } from '../components/AddressBook';
 import { LegalPage } from '../components/legal/LegalPage';
 import { NotFound } from '../components/NotFound';
+import { Spinner } from '../components/Spinner';
+
+// three.js is heavy — keep it out of the initial bundle.
+const TryOn = lazy(() =>
+  import('../components/TryOn').then((module) => ({ default: module.TryOn })),
+);
 import { ProtectedRoute } from '../components/ProtectedRoute';
 
 export function AppRoutes() {
@@ -28,6 +35,24 @@ export function AppRoutes() {
 
       <Route path="/search" element={<ProductList />} />
       <Route path="/product/:id" element={<ProductDetail />} />
+
+      {/* Virtual try-on (three.js + WebXR) */}
+      <Route
+        path="/try-on"
+        element={
+          <Suspense fallback={<Spinner label="Loading the fitting room…" />}>
+            <TryOn />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/try-on/:productId"
+        element={
+          <Suspense fallback={<Spinner label="Loading the fitting room…" />}>
+            <TryOn />
+          </Suspense>
+        }
+      />
 
       <Route path="/cart" element={<Cart />} />
       <Route path="/wishlist" element={<Wishlist />} />

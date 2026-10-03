@@ -1,7 +1,8 @@
 # TryNStyle
 
-A try-before-you-buy fashion storefront: pick up to 10 items, get them in ~30
-minutes, try everything for 2 hours, then pay only for what you keep.
+Virtual try-on first, physical trial second: see any piece on a body built from
+**your** measurements in 3D or VR, then get it delivered in ~30 minutes, try it
+for 2 hours, and pay only for what you keep.
 
 This repository (`VirtuQ`) contains two apps that share one catalog and one set
 of pricing rules:
@@ -70,6 +71,33 @@ See `.env.example`. The important ones:
 
 `.env` is git-ignored. If a secret is ever committed, rotate it — removing the
 file from git does not remove it from history.
+
+## Virtual try-on (the point of the product)
+
+Every product can be opened in a 3D fitting room at `/try-on/:productId`.
+
+- **Works on any device.** A body is generated from the shopper's own
+  measurements (height, chest, waist, hips, shoulders, skin tone) using three.js
+  — drag to rotate, scroll to zoom.
+- **Upgrades to a real headset.** The same scene exposes an `Enter VR` button
+  (WebXR `immersive-vr`) when a headset is available. Nothing changes in code —
+  the renderer just switches presentation mode.
+- **Measurements persist** in `localStorage`, so returning shoppers land on
+  their own body.
+- **Fit is driven by the catalogue.** Size (S–XL) loosens the garment shell,
+  subcategory picks the silhouette (top / outerwear / dress / bottom), and
+  colour comes from the product's variants.
+
+### Assets
+
+The fitting room ships with **procedural placeholder geometry**, so every item
+is tryable with zero 3D files. To upgrade to real models, drop
+`public/models/<productId>.glb` (and optionally `public/models/avatar.glb`) in
+place — the viewer auto-detects them and falls back per product. See
+[public/models/README.md](public/models/README.md).
+
+three.js is ~580 kB, so the try-on route is lazily loaded and lands in its own
+chunk. It is never part of the initial bundle.
 
 ## How the trial lifecycle works
 

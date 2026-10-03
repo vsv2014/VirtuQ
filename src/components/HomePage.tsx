@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Clock, Truck, Home, RotateCcw } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Package, RefreshCw } from 'lucide-react';
+import { Boxes, RefreshCw } from 'lucide-react';
 
 interface FeaturedLink {
   title: string;
@@ -18,9 +18,9 @@ interface Collection {
 
 const features = [
   {
-    icon: Package,
-    title: 'Browse & Order',
-    description: 'Select up to 10 clothes from curated collections',
+    icon: Boxes,
+    title: 'Try in VR',
+    description: 'See each piece on a body built from your measurements',
   },
   {
     icon: Truck,
@@ -125,12 +125,12 @@ export function HomePage() {
                 <span className="font-medium">Pay Later.</span>
               </h1>
               <p className="mb-8 text-xl leading-relaxed text-gray-600">
-                Experience luxury fashion at home. Get items delivered in 30 minutes,
-                try them for 2 hours, keep what you love.
+                See it on you in 3D or VR before you commit. Get items delivered in 30
+                minutes, try them for 2 hours, keep what you love.
               </p>
               <div className="flex flex-col gap-4 sm:flex-row">
-                <Link to="/category/men" className="btn btn-primary">
-                  Start Shopping
+                <Link to="/try-on" className="btn btn-primary">
+                  Try it in VR
                   <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </Link>
                 <Link to="/category/women" className="btn btn-secondary">
@@ -153,8 +153,8 @@ export function HomePage() {
 
             <div className="mt-12 grid grid-cols-3 gap-8">
               <div>
-                <div className="mb-2 text-3xl font-light">₹0</div>
-                <p className="text-gray-600">Upfront Payment</p>
+                <div className="mb-2 text-3xl font-light">3D</div>
+                <p className="text-gray-600">Virtual Fitting Room</p>
               </div>
               <div>
                 <div className="mb-2 text-3xl font-light">2hrs</div>

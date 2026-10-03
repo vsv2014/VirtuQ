@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Heart, ShoppingBag, Truck, Clock, RotateCcw } from 'lucide-react';
+import { Heart, ShoppingBag, Truck, Clock, RotateCcw, Boxes } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 import { getProduct } from '../data/mockProducts';
@@ -178,6 +178,14 @@ export function ProductDetail() {
           ) : null}
 
           <div className="flex gap-4">
+            <Link
+              to={`/try-on/${product.id}`}
+              className="btn btn-secondary"
+              title="Open the virtual fitting room"
+            >
+              <Boxes className="h-5 w-5" />
+              Try in VR
+            </Link>
             <button
               type="button"
               onClick={handleAddToCart}
@@ -200,6 +208,18 @@ export function ProductDetail() {
               <Heart className={`h-5 w-5 ${saved ? 'fill-red-500' : ''}`} />
             </button>
           </div>
+
+          <p className="text-xs text-gray-500">
+            Not sure about the fit? Open{' '}
+            <Link
+              to={`/try-on/${product.id}`}
+              className="text-purple-600 hover:underline"
+            >
+              Try in VR
+            </Link>{' '}
+            to see it on a body built from your measurements — then confirm with the
+            2-hour home trial.
+          </p>
 
           <ul className="space-y-3 border-t pt-6 text-sm text-gray-600">
             <li className="flex items-center gap-2">

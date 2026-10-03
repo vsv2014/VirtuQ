@@ -28,12 +28,16 @@ export default defineConfig({
     port: 4173,
   },
   build: {
+    // three.js is a large, deliberately separate vendor chunk.
+    chunkSizeWarningLimit: 700,
     // Split the vendor bundle so the initial payload stays small.
     rollupOptions: {
       output: {
         manualChunks: {
           react: ['react', 'react-dom', 'react-router-dom'],
           motion: ['framer-motion'],
+          // three.js is only pulled in by the lazily-loaded try-on route.
+          three: ['three'],
         },
       },
     },
